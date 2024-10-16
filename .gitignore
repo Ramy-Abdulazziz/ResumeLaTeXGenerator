@@ -1,0 +1,10 @@
+education/*
+projects/*
+resumes/*
+templates/*
+
+!education/.gitignore
+!projects/.gitignore
+!resumes/.gitignore
+!templates/.gitignore
+

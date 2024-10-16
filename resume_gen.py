@@ -238,12 +238,19 @@ def get_arg_lists():
     )
 
     args = parser.parse_args()
+
     def is_project_chosen(proj):
         return getattr(args, proj)
 
     p_args = list(filter(is_project_chosen, projects))
     if len(args.education) > 2:
         parser.error("Only 2 education entries max")
+    if len(args.education) == 2 and len(p_args) > 2: 
+        parser.error("Only 2 projects can fit on one page when both educations are added")
+    if len(p_args) > 3: 
+        parser.error("Max 3 projects can fit on one page")
+    if len(p_args) < 2: 
+        parser.error("Please add at least 2 projects")
     args.education.sort()
     return p_args, args.education, getattr(args, "D")
 

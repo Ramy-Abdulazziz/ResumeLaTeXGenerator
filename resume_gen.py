@@ -7,12 +7,12 @@ import glob
 
 
 class ResumePDFGenerator:
-    def __init__(self, tex_dir, parent_dir):
+    def __init__(self, tex_dir, parent_dir, save_to_desktop):
         self.directory = tex_dir
         self.parent_dir = parent_dir
+        self.desktop = save_to_desktop
 
     def compile_latex(self):
-        print(self.directory)
         try:
             subprocess.run(
                 ["pdflatex", self.directory],
@@ -20,11 +20,27 @@ class ResumePDFGenerator:
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=30,
             )
+
+            if self.desktop:
+                print("Copying pdf to desktop")
+                desktop_path = os.path.join(
+                    os.path.expanduser("~"), "OneDrive", "Desktop"
+                )
+                pdf_fname = os.path.basename(self.directory).replace(".tex", ".pdf")
+                pdf_src_path = os.path.join(self.parent_dir, pdf_fname)
+                pdf_dest_path = os.path.join(desktop_path, pdf_fname)
+                shutil.copy(pdf_src_path, pdf_dest_path)
 
         except subprocess.CalledProcessError as e:
             print(e)
             print("Unable to generate PDF Resume")
+        except subprocess.TimeoutExpired:
+            print("Error: pdflatex process timed out.")
+            print("Unable to generate PDF Resume")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
     def clean_up_files(self):
         aux_extensions = [
@@ -47,8 +63,10 @@ class ResumePDFGenerator:
 
 class TemplateGenerator:
     def __init__(self, projects, education, p_opts, e_opts):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        templates_path = os.path.join(script_dir, "templates")
         self.env = Environment(
-            loader=FileSystemLoader("templates"),
+            loader=FileSystemLoader(templates_path),
             autoescape=select_autoescape(),
             comment_start_string="{##",
             comment_end_string="##}",
@@ -73,13 +91,13 @@ class TemplateGenerator:
         return self.rendered
 
     def save_rendered_template(self):
-        cwd = os.getcwd()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         ed_desc = "_".join(self.e_opts)
         p_desc = "_".join(self.p_opts)
-        dir_path = os.path.join(cwd, "resumes", f"ED_{ed_desc}_P_{p_desc}")
+        dir_path = os.path.join(script_dir, "resumes", f"ED_{ed_desc}_P_{p_desc}")
         save_dir = os.path.join(dir_path, "Ramy_Abdulazziz_Resume.tex")
-        self.rendered_directory = str(save_dir)
-        self.rendered_parent_dir = str(dir_path)
+        self.rendered_directory = os.path.abspath(save_dir)
+        self.rendered_parent_dir = os.path.abspath(dir_path)
 
         if os.path.exists(dir_path):
             shutil.rmtree(dir_path)
@@ -116,6 +134,8 @@ class TemplateArgRetriever:
                 return "selenium"
             case "t":
                 return "timber"
+            case "m":
+                return "mint"
 
     def ed_args_to_fname(self, e_arg):
         match e_arg:
@@ -140,8 +160,9 @@ class TemplateArgRetriever:
 
     def gen_proj_list(self):
         p_fnames = self.get_proj_fnames()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         for fname in p_fnames:
-            fpath = f"projects\{fname}.txt"
+            fpath = os.path.join(script_dir, "projects", f"{fname}.txt")
             try:
                 with open(fpath, "r") as file:
                     p_latex = file.read()
@@ -152,8 +173,10 @@ class TemplateArgRetriever:
 
     def gen_ed_list(self):
         ed_fnames = self.get_ed_fnames()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
         for fname in ed_fnames:
-            fpath = f"education\{fname}.txt"
+            fpath = os.path.join(script_dir, "education", f"{fname}.txt")
             try:
                 with open(fpath, "r") as file:
                     ed_latex = file.read()
@@ -208,8 +231,13 @@ def get_arg_lists():
             help=f"Include project {proj_flag_to_name(proj)}",
         )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "-D",
+        action="store_true",
+        help="Copy generated PDF to desktop (overwrite other files with same name)",
+    )
 
+    args = parser.parse_args()
     def is_project_chosen(proj):
         return getattr(args, proj)
 
@@ -217,11 +245,11 @@ def get_arg_lists():
     if len(args.education) > 2:
         parser.error("Only 2 education entries max")
     args.education.sort()
-    return p_args, args.education
+    return p_args, args.education, getattr(args, "D")
 
 
 def main():
-    p_opts, ed_opts = get_arg_lists()
+    p_opts, ed_opts, desktop = get_arg_lists()
     tar = TemplateArgRetriever(p_opts, ed_opts)
     p_args = tar.get_projs()
     ed_args = tar.get_eds()
@@ -231,8 +259,9 @@ def main():
 
     ren_dir = tag.get_rendered_directory()
     parent_dir = tag.get_rendered_parent_dir()
-    rpg = ResumePDFGenerator(ren_dir, parent_dir)
+    rpg = ResumePDFGenerator(ren_dir, parent_dir, desktop)
     rpg.compile_latex()
+    print(f"LaTeX compiled successfully and PDF generated in directory {ren_dir}")
     rpg.clean_up_files()
 
 

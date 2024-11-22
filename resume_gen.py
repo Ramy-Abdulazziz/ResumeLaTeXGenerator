@@ -22,14 +22,14 @@ class ResumePDFGenerator:
                 capture_output=True,
                 timeout=30,
             )
-
+            pdf_fname = os.path.basename(self.directory).replace(".tex", ".pdf")
+            pdf_src_path = os.path.join(self.parent_dir, pdf_fname)
+            print(f"LaTeX compiled successfully and PDF generated in directory {pdf_src_path}")
             if self.desktop:
                 print("Copying pdf to desktop")
                 desktop_path = os.path.join(
                     os.path.expanduser("~"), "OneDrive", "Desktop"
                 )
-                pdf_fname = os.path.basename(self.directory).replace(".tex", ".pdf")
-                pdf_src_path = os.path.join(self.parent_dir, pdf_fname)
                 pdf_dest_path = os.path.join(desktop_path, pdf_fname)
                 shutil.copy(pdf_src_path, pdf_dest_path)
 
@@ -260,6 +260,7 @@ def main():
     tar = TemplateArgRetriever(p_opts, ed_opts)
     p_args = tar.get_projs()
     ed_args = tar.get_eds()
+    ed_args = sorted(ed_args)
     tag = TemplateGenerator(p_args, ed_args, p_opts, ed_opts)
     tag.gen_template()
     tag.save_rendered_template()
@@ -268,7 +269,6 @@ def main():
     parent_dir = tag.get_rendered_parent_dir()
     rpg = ResumePDFGenerator(ren_dir, parent_dir, desktop)
     rpg.compile_latex()
-    print(f"LaTeX compiled successfully and PDF generated in directory {ren_dir}")
     rpg.clean_up_files()
 
 

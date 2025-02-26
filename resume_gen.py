@@ -62,7 +62,7 @@ class ResumePDFGenerator:
 
 
 class TemplateGenerator:
-    def __init__(self, projects, education, p_opts, e_opts):
+    def __init__(self, projects, education, p_opts, e_opts, n_opt):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         templates_path = os.path.join(script_dir, "templates")
         self.env = Environment(
@@ -77,13 +77,14 @@ class TemplateGenerator:
         self.base_template = self.env.get_template(name="base.tex")
         self.p_opts = p_opts
         self.e_opts = e_opts
+        self.n_opt = n_opt
         self.rendered = None
         self.rendered_directory = ""
         self.rendered_parent_dir = ""
 
     def gen_template(self):
         self.rendered = self.base_template.render(
-            education=self.education, projects=self.projects
+            education=self.education, projects=self.projects, n_flag=self.n_opt
         )
 
     def get_rendered_template(self):
@@ -237,6 +238,12 @@ def get_arg_lists():
         help="Copy generated PDF to desktop (overwrite other files with same name)",
     )
 
+    parser.add_argument(
+        "-N", 
+        action="store_true",
+        help="Adjust HPE experience for networking/devops intensive roles", 
+    )
+
     args = parser.parse_args()
 
     def is_project_chosen(proj):
@@ -252,16 +259,16 @@ def get_arg_lists():
     if len(p_args) < 2: 
         parser.error("Please add at least 2 projects")
     args.education.sort()
-    return p_args, args.education, getattr(args, "D")
+    return p_args, args.education, getattr(args, "D"), getattr(args, "N")
 
 
 def main():
-    p_opts, ed_opts, desktop = get_arg_lists()
+    p_opts, ed_opts, desktop, networking = get_arg_lists()
     tar = TemplateArgRetriever(p_opts, ed_opts)
     p_args = tar.get_projs()
     ed_args = tar.get_eds()
     ed_args = sorted(ed_args)
-    tag = TemplateGenerator(p_args, ed_args, p_opts, ed_opts)
+    tag = TemplateGenerator(p_args, ed_args, p_opts, ed_opts, networking)
     tag.gen_template()
     tag.save_rendered_template()
 

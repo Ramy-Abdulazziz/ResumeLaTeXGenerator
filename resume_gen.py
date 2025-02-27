@@ -62,7 +62,7 @@ class ResumePDFGenerator:
 
 
 class TemplateGenerator:
-    def __init__(self, projects, education, p_opts, e_opts, n_opt):
+    def __init__(self, projects, education, p_opts, e_opts, n_opt, h_opt = False):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         templates_path = os.path.join(script_dir, "templates")
         self.env = Environment(
@@ -78,13 +78,14 @@ class TemplateGenerator:
         self.p_opts = p_opts
         self.e_opts = e_opts
         self.n_opt = n_opt
+        self.h_opt = h_opt
         self.rendered = None
         self.rendered_directory = ""
         self.rendered_parent_dir = ""
 
     def gen_template(self):
         self.rendered = self.base_template.render(
-            education=self.education, projects=self.projects, n_flag=self.n_opt
+            education=self.education, projects=self.projects, n_flag=self.n_opt, h_flag = self.h_opt
         )
 
     def get_rendered_template(self):

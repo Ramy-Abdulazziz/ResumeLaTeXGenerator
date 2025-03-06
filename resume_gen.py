@@ -138,6 +138,8 @@ class TemplateArgRetriever:
                 return "timber"
             case "m":
                 return "mint"
+            case "p": 
+                return "pubsub"
 
     def ed_args_to_fname(self, e_arg):
         match e_arg:
@@ -212,6 +214,8 @@ def proj_flag_to_name(flag):
             return "Automated Assignment Fetcher w) Selenium"
         case "t":
             return "Timberwolf placement"
+        case "p": 
+            return "Kernel Pub Sub System"
 
 
 def get_arg_lists():
@@ -225,7 +229,7 @@ def get_arg_lists():
         help="List of education to include",
     )
 
-    projects = ["c", "f", "k", "m", "r", "s", "t"]
+    projects = ["c", "f", "k", "m", "r", "s", "t", "p"]
     for proj in projects:
         parser.add_argument(
             f"-{proj}",

@@ -24,7 +24,9 @@ class ResumePDFGenerator:
             )
             pdf_fname = os.path.basename(self.directory).replace(".tex", ".pdf")
             pdf_src_path = os.path.join(self.parent_dir, pdf_fname)
-            print(f"LaTeX compiled successfully and PDF generated in directory {pdf_src_path}")
+            print(
+                f"LaTeX compiled successfully and PDF generated in directory {pdf_src_path}"
+            )
             if self.desktop:
                 print("Copying pdf to desktop")
                 desktop_path = os.path.join(
@@ -62,7 +64,7 @@ class ResumePDFGenerator:
 
 
 class TemplateGenerator:
-    def __init__(self, projects, education, p_opts, e_opts, n_opt, h_opt = False):
+    def __init__(self, projects, education, p_opts, e_opts, n_opt, e_opt, summ_opts, h_opt=False):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         templates_path = os.path.join(script_dir, "templates")
         self.env = Environment(
@@ -79,13 +81,20 @@ class TemplateGenerator:
         self.e_opts = e_opts
         self.n_opt = n_opt
         self.h_opt = h_opt
+        self.e_opt = e_opt
+        self.summ_opts = summ_opts
         self.rendered = None
         self.rendered_directory = ""
         self.rendered_parent_dir = ""
 
     def gen_template(self):
         self.rendered = self.base_template.render(
-            education=self.education, projects=self.projects, n_flag=self.n_opt, h_flag = self.h_opt
+            education=self.education,
+            projects=self.projects,
+            n_flag=self.n_opt,
+            h_flag=self.h_opt,
+            e_flag=self.e_opt,
+            summary_type = self.summ_opts[0]
         )
 
     def get_rendered_template(self):
@@ -138,8 +147,12 @@ class TemplateArgRetriever:
                 return "timber"
             case "m":
                 return "mint"
-            case "p": 
+            case "p":
                 return "pubsub"
+            case "a":
+                return "tcpanalysis"
+            case "w":
+                return "webserver"
 
     def ed_args_to_fname(self, e_arg):
         match e_arg:
@@ -149,6 +162,8 @@ class TemplateArgRetriever:
                 return "georgia_25"
             case "g26":
                 return "georgia_26"
+            case "g27":
+                return "georgia_27"
 
     def get_proj_fnames(self):
         p_fnames = set()
@@ -214,8 +229,12 @@ def proj_flag_to_name(flag):
             return "Automated Assignment Fetcher w) Selenium"
         case "t":
             return "Timberwolf placement"
-        case "p": 
+        case "p":
             return "Kernel Pub Sub System"
+        case "a":
+            return "TCP Packet Analysis & Congestion Control"
+        case "w":
+            return "Web Server & Proxy Implementation"
 
 
 def get_arg_lists():
@@ -225,11 +244,18 @@ def get_arg_lists():
     parser.add_argument(
         "education",
         nargs="+",
-        choices=["s", "g25", "g26"],
+        choices=["s", "g25", "g26", "g27"],
         help="List of education to include",
     )
 
-    projects = ["c", "f", "k", "m", "r", "s", "t", "p"]
+    parser.add_argument(
+        "summary", 
+        nargs='+', 
+        choices = ['backend', 'fullstack', 'ml', 'devops', 'frontend', 'generalist', 'startup', 'none'], 
+        help = "Add a summary", 
+    )
+
+    projects = ["c", "f", "k", "m", "r", "s", "t", "p", "a", "w"]
     for proj in projects:
         parser.add_argument(
             f"-{proj}",
@@ -244,9 +270,21 @@ def get_arg_lists():
     )
 
     parser.add_argument(
-        "-N", 
+        "-N",
         action="store_true",
-        help="Adjust HPE experience for networking/devops intensive roles", 
+        help="Adjust HPE experience for networking/devops intensive roles",
+    )
+
+    parser.add_argument(
+        "-O",
+        action="store_true",
+        help="Override length maximums",
+    )
+
+    parser.add_argument(
+        "-E",
+        action="store_true",
+        help="Include extended list of skills",
     )
 
     args = parser.parse_args()
@@ -255,25 +293,28 @@ def get_arg_lists():
         return getattr(args, proj)
 
     p_args = list(filter(is_project_chosen, projects))
+
     if len(args.education) > 2:
         parser.error("Only 2 education entries max")
-    if len(args.education) == 2 and len(p_args) > 2: 
-        parser.error("Only 2 projects can fit on one page when both educations are added")
-    if len(p_args) > 3: 
+    if len(args.education) == 2 and len(p_args) > 2 and not getattr(args, "D"):
+        parser.error(
+            "Only 2 projects can fit on one page when both educations are added"
+        )
+    if len(p_args) > 3 and not getattr(args, "D"):
         parser.error("Max 3 projects can fit on one page")
-    if len(p_args) < 2: 
+    if len(p_args) < 2:
         parser.error("Please add at least 2 projects")
     args.education.sort()
-    return p_args, args.education, getattr(args, "D"), getattr(args, "N")
+    return p_args, args.education, args.summary, getattr(args, "D"), getattr(args, "N"), getattr(args, "E")
 
 
 def main():
-    p_opts, ed_opts, desktop, networking = get_arg_lists()
+    p_opts, ed_opts, summ_opts, desktop, networking, e_opt = get_arg_lists()
     tar = TemplateArgRetriever(p_opts, ed_opts)
     p_args = tar.get_projs()
     ed_args = tar.get_eds()
     ed_args = sorted(ed_args)
-    tag = TemplateGenerator(p_args, ed_args, p_opts, ed_opts, networking)
+    tag = TemplateGenerator(p_args, ed_args, p_opts, ed_opts, networking, e_opt, summ_opts)
     tag.gen_template()
     tag.save_rendered_template()
 
